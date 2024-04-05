@@ -159,17 +159,20 @@ export default function App() {
   const [watched, setWatched] = useState([]);
   const [Quearys, setQuerys]=useState('')
   useEffect(()=>{
+    const controller = new AbortController();
     async function FindMovie(){
       try{
         setLoaded(true)
         setError(null)
-        const Res= await fetch(`http://www.omdbapi.com/?apikey=faaa0cb7&s=${Quearys}`)
+        const Res= await fetch(`http://www.omdbapi.com/?apikey=faaa0cb7&s=${Quearys}`,{signal:controller.signal})
         if(!Res.ok) throw new Error('❌ Something is wrong')
         const Data=await Res.json()
         if(Data.Response==="False") throw new Error('Movie not found')
         setMovies(Data.Search)
       } catch(err){
-        setError(err.message)
+        if (err.name !== 'AbortError') {
+          setError(err.message)
+        }
       }
       finally{
         setLoaded(false)
@@ -181,6 +184,9 @@ export default function App() {
       return
     }
     FindMovie()
+    return ()=>{
+      controller.abort()
+    }
   },[Quearys])
   return (
     <>
@@ -198,11 +204,10 @@ export default function App() {
       <Frame>
         {Selected? <MovieDetails Selected={Selected} watched={watched} setWatched={setWatched} SetSelected={SetSelected}/>:
         <>
-                <Summery watched={watched}/>
+        <Summery watched={watched}/>
         <WatchedList watched={watched} setWatched={setWatched}/>
         </>
         }
-
       </Frame>
     </Main>
     </>
@@ -214,10 +219,10 @@ function MovieDetails({Selected,SetSelected,watched,setWatched}){
   const [Details,SetDetails]=useState({})
   const {Poster,Title,Plot,Director,Runtime,Actors,imdbRating,Released,Genre}=Details
   const [MyRate,setMyRate]=useState(null)
-  // const [filter,setfilter]=useState(false)
   function MyRating(rate){
     setMyRate(rate)
   }
+  
   function AddNew(){
     const New={
       imdbID:Selected,
@@ -227,14 +232,19 @@ function MovieDetails({Selected,SetSelected,watched,setWatched}){
       userRating:MyRate,
       Runtime: Runtime==="N/A"? 0 : Number(Runtime.split(" ")[0])
     }
-    // setfilter(true)
     setWatched(Movie=>[...Movie,New])
     SetSelected(null)
   }
+  useEffect(()=>{
+    if(Title){
+      document.title=`Movie: ${Title}`
+    }
+    return function(){
+      document.title=`Watch List`
+    }
+  },[Title])
   const isIn=watched.map(x=>x.imdbID).includes(Selected)
-  // if(isIn){
-  //   const userRating=watched.map(x=>x.imdbID===Selected)
-  // }
+  
   useEffect(()=>{
     async function ShowDetails(){
       try{
@@ -252,7 +262,6 @@ function MovieDetails({Selected,SetSelected,watched,setWatched}){
         setLoaded(false)
       }
     }
-      
     ShowDetails()
   },[Selected])
 
@@ -261,7 +270,7 @@ function MovieDetails({Selected,SetSelected,watched,setWatched}){
     {isLoaded && <Loading/> }
     {!isLoaded && !Errors &&
     <>
-              <header>
+          <header>
             <button className="btn-back" onClick={()=> SetSelected(null)}>&larr;</button>
             <img className="poster" src={Poster} alt={Title}/>
             <div className="details-overview">
