@@ -183,6 +183,7 @@ export default function App() {
       setError(null)
       return
     }
+    SetSelected(null)
     FindMovie()
     return ()=>{
       controller.abort()
@@ -222,6 +223,18 @@ function MovieDetails({Selected,SetSelected,watched,setWatched}){
   function MyRating(rate){
     setMyRate(rate)
   }
+  useEffect(()=>{
+    function onKeyDown(e){
+      if(e.code==='Escape') SetSelected(null)
+    }
+    function KeyCLose(){
+      document.addEventListener('keydown',onKeyDown)
+    }
+    KeyCLose()
+    return ()=>{
+      document.removeEventListener('keydown',onKeyDown)
+    }
+  },[SetSelected])
   
   function AddNew(){
     const New={
