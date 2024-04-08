@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Rating from './Rating'
-
+import {useMovies}  from "./useMovies";
+import {useStorage} from "./useStorage"
 
 const average = (arr) =>
   arr.reduce((acc, cur, i, arr) => acc + cur / arr.length, 0);
@@ -28,8 +29,20 @@ function Logo(){
     </div>
   )
 }
-
 function Search({Quearys,setQuerys}){
+  const SearchFocus=useRef(null)
+  useEffect(()=>{
+    function callback(e){
+      if(document.activeElement===SearchFocus.current) return
+      if(e.code==="Enter"){
+        SearchFocus.current.focus()
+        setQuerys("")
+      }
+    }
+    document.addEventListener('keydown',callback)
+    return document.addEventListener('keydown',callback)
+    
+  },[SearchFocus,setQuerys])
   return(
     <input
     className="search"
@@ -37,10 +50,10 @@ function Search({Quearys,setQuerys}){
     placeholder="Search movies..."
     value={Quearys}
     onChange={(e) => setQuerys(e.target.value)}
+    ref={SearchFocus}
   />
   )
 }
-
 function Frame({children}){
   const [isOpen1, setIsOpen1] = useState(true);
   return(
@@ -55,7 +68,6 @@ function Frame({children}){
     </div>
   )
 }
-
 function Movie({movie,SetSelected}){
   return(
     <li key={movie.imdbID} onClick={()=>SetSelected(movie.imdbID)}>
@@ -142,7 +154,6 @@ return(
 </div>
 )
 }
-
 function Main({children}){
   return(
     <main className="main">
@@ -150,48 +161,14 @@ function Main({children}){
   </main>
   )
 }
-
 export default function App() {
   const [Selected, SetSelected]=useState(null)
-  const [Errors, setError]=useState(null)
-  const [isLoaded,setLoaded]=useState(false)
-  const [movies, setMovies] = useState([]);
-  const [watched, setWatched] = useState([]);
   const [Quearys, setQuerys]=useState('')
-  useEffect(()=>{
-    const controller = new AbortController();
-    async function FindMovie(){
-      try{
-        setLoaded(true)
-        setError(null)
-        const Res= await fetch(`http://www.omdbapi.com/?apikey=faaa0cb7&s=${Quearys}`,{signal:controller.signal})
-        if(!Res.ok) throw new Error('❌ Something is wrong')
-        const Data=await Res.json()
-        if(Data.Response==="False") throw new Error('Movie not found')
-        setMovies(Data.Search)
-      } catch(err){
-        if (err.name !== 'AbortError') {
-          setError(err.message)
-        }
-      }
-      finally{
-        setLoaded(false)
-      }
-    }
-    if(Quearys<1){
-      setMovies([])
-      setError(null)
-      return
-    }
-    SetSelected(null)
-    FindMovie()
-    return ()=>{
-      controller.abort()
-    }
-  },[Quearys])
+  const [watched,setWatched]=useStorage('watched')
+  const {movies,isLoaded,Errors} = useMovies(Quearys,SetSelected)
   return (
     <>
-    <NavBar>
+    <NavBar> 
       <Logo/>
       <Search Quearys={Quearys} setQuerys={setQuerys}/>
       <Total movies={movies}/>
